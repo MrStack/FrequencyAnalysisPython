@@ -49,7 +49,7 @@ class MainWindow(QtWidgets.QWidget):
         self.init_drawer()
 
     def open_audio_file(self):
-        self.audioFileNames = QtWidgets.QFileDialog.getOpenFileNames(self, 'Open file', 'D:/CloudMusic')
+        self.audioFileNames = QtWidgets.QFileDialog.getOpenFileNames(self, 'Open file', 'D:/CloudMusic', "所有文件 (*);;音频文件 (*.wav)")
         # 如果没有打开任何文件，则不做任何操作，保留编辑框中之前的文本信息
         if len(self.audioFileNames[0]) == 0:
             return
@@ -115,7 +115,7 @@ class MainWindow(QtWidgets.QWidget):
         self.wf.setpos(self.audioTimeChunkIndex)
         self.data = self.wf.readframes(self.CHUNK)
         self.audioTimeChunkIndex += self.CHUNK
-        if self.data != b'' or self.audioTimeChunkIndex > self.params[3]-self.CHUNK-100:
+        if self.data != b'':
             self.datause = np.fromstring(self.data, np.short)
             self.datause.shape = -1, 2
             self.datause = self.datause.T
@@ -140,16 +140,20 @@ class MainWindow(QtWidgets.QWidget):
             #self.audioFrequencyDomain.bar_plot(x=x, y=y, width=width)
             self.audioFrequencyDomain.plot(x=x, y=y)
 
+            if self.audioTimeChunkIndex >= self.params[3] - self.CHUNK - 1:
+                if self.audioFileCurrentChooseIndex < len(self.audioFileNames[0]):
+                    self.audioFileCurrentChooseIndex += 1
+                    self.audioTimeChunkIndex = 0
+                    self.read_audio_file()
+                else:
+                    self.audioFileCurrentChooseIndex = 0
+                    self.audioTimeChunkIndex = 0
+                    self.read_audio_file()
+
+                return
             self.stream.write(self.data)
         else:
-            if self.audioFileCurrentChooseIndex < len(self.audioFileNames[0]):
-                self.audioFileCurrentChooseIndex += 1
-                self.audioTimeChunkIndex = 0
-                self.read_audio_file()
-            else:
-                self.audioFileCurrentChooseIndex = 0
-                self.audioTimeChunkIndex = 0
-                self.read_audio_file()
+            pass
 
 #            self.audioTimeDomain.plot(x=[0], y=[0])
 #            self.audioFrequencyDomain.plot(x=[0], y=[0])
@@ -165,6 +169,7 @@ class MainWindow(QtWidgets.QWidget):
 
     def play_audio(self):
         self.read_audio_file()
+        #self.audioTimeChunkIndex = 10160000
         self.stream = self.p.open(format=self.p.get_format_from_width(self.wf.getsampwidth()),
                         channels=self.wf.getnchannels(),
                         rate=self.wf.getframerate(),
